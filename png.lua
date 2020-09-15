@@ -96,8 +96,19 @@ local function getDataPLTE(stream, length)
         data.colors[i] = {
             R = readByte(stream),
             G = readByte(stream),
-            B = readByte(stream)
+            B = readByte(stream),
+            A = 255
         }
+    end
+    return data
+end
+
+local function getDatatRNS(stream, length, palette)
+    local data = {}
+    data["numColors"] = length
+    data["colors"] = {}
+    for i = 1, length do
+        palette.colors[i].A = readByte(stream)
     end
     return data
 end
@@ -116,7 +127,9 @@ local function extractChunkData(stream)
         elseif (type == "IDAT") then
             chunkData[type] = getDataIDAT(stream, length, chunkData[type])
         elseif (type == "PLTE") then
-            chunkData[type] = getDataPLTE(stream, length)
+	    chunkData[type] = getDataPLTE(stream, length)
+	elseif (type == "tRNS") then
+	   chunkData[type] = getDatatRNS(stream, length, chunkData["PLTE"])
         else
             readChar(stream, length)
         end
@@ -128,7 +141,7 @@ end
 
 local function makePixel(stream, depth, colorType, palette)
     local bps = math.floor(depth/8) --bits per sample
-    local pixelData = { R = 0, G = 0, B = 0, A = 0 }
+    local pixelData = { R = 0, G = 0, B = 0, A = 0, I = 0 }
     local grey
     local index
     local color 
@@ -150,7 +163,8 @@ local function makePixel(stream, depth, colorType, palette)
         pixelData.R = color.R
         pixelData.G = color.G
         pixelData.B = color.B
-        pixelData.A = 255
+        pixelData.A = color.A
+        pixelData.I = index
     elseif colorType == 4 then
         grey = readInt(stream, bps)
         pixelData.R = grey
